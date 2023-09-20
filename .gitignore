@@ -1,52 +1,242 @@
-# Prerequisites
-*.d
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+#include "dna_sequence.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
 
-# Linker output
-*.ilk
-*.map
-*.exp
+DoublyLinkedList *CDoublyLinkedList() {
+    DoublyLinkedList *list = (DoublyLinkedList *)malloc(sizeof(DoublyLinkedList));
+    list->head = NULL;
+    list->tail = NULL;
+    list->size = 0;
+    return list;
+}
 
-# Precompiled Headers
-*.gch
-*.pch
+void AtEnd(DoublyLinkedList *list, Base *base) {
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    newNode->base = base;
+    newNode->next = NULL;
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+    if (list->head == NULL) {
+        newNode->prev = NULL;
+        list->head = newNode;
+        list->tail = newNode;
+    } else {
+        newNode->prev = list->tail;
+        list->tail->next = newNode;
+        list->tail = newNode;
+    }
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+    list->size++;
+}
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+void AtPosition(DoublyLinkedList *list, Base *base, int position) {
+    if (position < 0 || position > list->size) {
+        printf("Not valid insertion position.\n");
+        return;
+    }
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    newNode->base = base;
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+    if (position == 0) {
+        newNode->prev = NULL;
+        newNode->next = list->head;
+        if (list->head != NULL) {
+            list->head->prev = newNode;
+        }
+        list->head = newNode;
+        if (list->tail == NULL) {
+            list->tail = newNode;
+        }
+    } else if (position == list->size) {
+        newNode->prev = list->tail;
+        newNode->next = NULL;
+        list->tail->next = newNode;
+        list->tail = newNode;
+    } else {
+        Node *current = list->head;
+        for (int i = 0; i < position - 1; i++) {
+            current = current->next;
+        }
+        newNode->prev = current;
+        newNode->next = current->next;
+        current->next->prev = newNode;
+        current->next = newNode;
+    }
+
+    list->size++;
+}
+
+void removePosition(DoublyLinkedList *list, int position) {
+    if (position < 0 || position >= list->size) {
+        printf("Not valid deletion position.\n");
+
+    }
+
+    Node *current = list->head;
+    for (int i = 0; i < position; i++) {
+        current = current->next;
+    }
+
+    if (current->prev != NULL) {
+        current->prev->next = current->next;
+    } else {
+        list->head = current->next;
+    }
+
+    if (current->next != NULL) {
+        current->next->prev = current->prev;
+    } else {
+        list->tail = current->prev;
+    }
+
+    free(current);
+    list->size--;
+}
+
+Base *createBase(char type) {
+    Base *newBase = (Base *)malloc(sizeof(Base));
+    newBase->type = type;
+    return newBase;
+}
+
+DNASequence *createDNASequence() {
+    DNASequence *sequence = (DNASequence *)malloc(sizeof(DNASequence));
+    sequence->current_age = 0;
+    sequence->max_lifespan = rand() % 43 + 8;
+    sequence->prob_growth = 0.25;
+    sequence->prob_deletion = 0.25;
+    sequence->prob_mutation = 0.0;
+    sequence->sequence = CDoublyLinkedList();
+    for (int i = 0; i < 20; i++) {
+        char base_type = "ACGT"[rand() % 4];
+        Base *base = createBase(base_type);
+        AtEnd(sequence->sequence, base);
+    }
+    return sequence;
+}
+
+int searchPattern(DoublyLinkedList *sequence, const char *pattern) {
+    Node *current = sequence->head;
+    int position = 0;
+
+    while (current != NULL) {
+        if (current->base->type == pattern[0]) {
+            Node *temp = current;
+            int patternPos = 0;
+
+            while (temp != NULL && pattern[patternPos] != '\0' && temp->base->type == pattern[patternPos]) {
+                patternPos++;
+                temp = temp->next;
+            }
+
+            if (pattern[patternPos] == '\0') {
+                return position;
+            }
+        }
+
+        position++;
+        current = current->next;
+    }
+
+    return -1;
+}
+
+
+void printSequence(DNASequence *sequence) {
+    Node *current = sequence->sequence->head;
+    while (current != NULL) {
+        printf("%c ", current->base->type);
+        current = current->next;
+    }
+    printf("\n");
+}
+
+
+void applyLC(DNASequence *sequence) {
+    sequence->current_age++;
+
+
+    if (rand() / (float)RAND_MAX < sequence->prob_growth) {
+        char base_type = "ACGT"[rand() % 4];
+        Base *base = createBase(base_type);
+        AtPosition(sequence->sequence, base, rand() % sequence->sequence->size);
+    }
+    if (rand() / (float)RAND_MAX < sequence->prob_deletion && sequence->sequence->size > 0) {
+        int position = rand() % sequence->sequence->size;
+        removePosition(sequence->sequence, position);
+    }
+
+    // Manage mutation probability and implement mutations based on likelihood
+    if (sequence->current_age >= 5) {
+        sequence->prob_mutation = 0.1 + (sequence->current_age - 5) * 0.01;
+    }
+    Node *current = sequence->sequence->head;
+    while (current != NULL) {
+        if (rand() / (float)RAND_MAX < sequence->prob_mutation) {
+            current->base->type = "ACGT"[rand() % 4];
+        }
+        current = current->next;
+    }
+
+    // Search for patterns and apply special properties
+    char *patternA = "AAA";
+    int patternAPos = searchPattern(sequence->sequence, patternA);
+    if (patternAPos != -1) {
+        sequence->max_lifespan += strlen(patternA) - 1;
+    }
+
+    char *patternB = "CCC";
+    int patternBPos = searchPattern(sequence->sequence, patternB);
+    if (patternBPos != -1) {
+        sequence->max_lifespan -= strlen(patternB);
+    }
+
+    char *patternC = "GGG";
+    int patternCPos = searchPattern(sequence->sequence, patternC);
+    if (patternCPos != -1) {
+        reduceLengthByHalf(sequence);
+    }
+
+    char *patternD = "TTT";
+    int patternDPos = searchPattern(sequence->sequence, patternD);
+    if (patternDPos != -1) {
+        DSequence(sequence);
+    }
+
+    // Print sequence
+    printf("Age: %d, Maximum Lifespan: %d\n", sequence->current_age, sequence->max_lifespan);
+    printSequence(sequence);
+}
+
+void reduceLengthByHalf(DNASequence *sequence) {
+    int newSize = sequence->sequence->size / 2;
+    while (sequence->sequence->size > newSize) {
+        int position = rand() % sequence->sequence->size;
+        removePosition(sequence->sequence, position);
+    }
+}
+
+void DSequence(DNASequence *sequence) {
+    int currentSize = sequence->sequence->size;
+    for (int i = 0; i < currentSize; i++) {
+        char base_type = "ACGT"[rand() % 4];
+        Base *base = createBase(base_type);
+        AtEnd(sequence->sequence, base);
+    }
+}
+
+
+void freeSequence(DNASequence *sequence) {
+    Node *current = sequence->sequence->head;
+    while (current != NULL) {
+        Node *temp = current;
+        current = current->next;
+        free(temp->base);
+        free(temp);
+    }
+    free(sequence->sequence);
+    free(sequence);
+}
