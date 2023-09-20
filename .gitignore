@@ -1,52 +1,50 @@
-# Prerequisites
-*.d
+#ifndef REPEAT_DNA_SEQUENCE_H
+#define REPEAT_DNA_SEQUENCE_H
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+#include "dna_sequence.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
 
-# Linker output
-*.ilk
-*.map
-*.exp
+typedef struct Base {
+    char type;
+} Base;
 
-# Precompiled Headers
-*.gch
-*.pch
+typedef struct Node {
+    Base *base;
+    struct Node *prev;
+    struct Node *next;
+} Node;
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+typedef struct DoublyLinkedList {
+    Node *head;
+    Node *tail;
+    int size;
+} DoublyLinkedList;
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+typedef struct DNASequence {
+    int current_age;
+    int max_lifespan;
+    float prob_growth;
+    float prob_deletion;
+    float prob_mutation;
+    DoublyLinkedList *sequence;
+} DNASequence;
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+DoublyLinkedList *CDoublyLinkedList();
+void AtEnd(DoublyLinkedList *list, Base *base);
+void AtPosition(DoublyLinkedList *list, Base *base, int position);
+void removePosition(DoublyLinkedList *list, int position);
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+Base *createBase(char type);
+DNASequence *createDNASequence();
+void applyLC(DNASequence *sequence);
+void reduceLengthByHalf(DNASequence *sequence);
+void printSequence(DNASequence *sequence);
+void freeSequence(DNASequence *sequence);
+void DSequence(DNASequence *sequence);
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+#endif // REPEAT_DNA_SEQUENCE_H
+
+
